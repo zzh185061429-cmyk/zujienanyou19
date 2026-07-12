@@ -157,7 +157,7 @@ export function VariableViewerModal({ isOpen, onClose }: VariableViewerModalProp
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center">
+        <div className="absolute inset-0 z-100 flex items-center justify-center">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

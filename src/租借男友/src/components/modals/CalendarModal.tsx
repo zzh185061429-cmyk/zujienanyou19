@@ -59,7 +59,7 @@ export function CalendarModal() {
   const displayedEvents = selectedDay ? monthEvents.filter(e => e.day === selectedDay) : monthEvents;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-16 p-4">
+    <div className="absolute inset-0 z-[100] flex items-start justify-center pt-16 p-4">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

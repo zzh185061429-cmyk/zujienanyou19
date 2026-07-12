@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { PopCard } from "../components/ui/PopCard";
 import { PopButton } from "../components/ui/PopButton";

@@ -28,7 +28,7 @@ export function HUD({ isSidebarOpen, onToggleSidebar, isFullscreen, onToggleFull
 
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 z-40 p-2 pointer-events-none">
+      <div className="absolute top-0 left-0 right-0 z-40 p-2 pointer-events-none">
         {/* 宽屏：三列左右布局；窄屏：上下堆叠 */}
         <div className="flex flex-col lg:flex-row items-stretch gap-2 w-full">
           

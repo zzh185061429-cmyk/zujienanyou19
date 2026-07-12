@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { HUD } from './components/HUD';
-import { ToastProvider } from './components/ToastProvider';
+import { ToastProvider, useToast } from './components/ToastProvider';
 import { ChatBar } from './components/ChatBar';
 import { GameProvider, useGameContext } from './state/GameContext';
 import { StoryView } from './views/StoryView';
@@ -15,7 +15,6 @@ import { ReadingModal } from './views/ReadingModal';
 import { ThinkingChainModal } from './views/ThinkingChainModal';
 import { VariableViewerModal } from './views/VariableViewerModal';
 import { DeleteFloorsModal } from './views/DeleteFloorsModal';
-import { useToast } from './components/ToastProvider';
 import { regenerateCurrentFloor } from './utils/interaction';
 import { MessageSquare, Calendar, Users, X, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -79,21 +78,23 @@ function AppContent() {
         } else if ('orientation' in screen) {
           (screen.orientation as any).unlock();
         }
-      } catch {}
-    } else {
-      // 前端模式：浏览器原生全屏 API
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-        try { (screen.orientation as any)?.unlock(); } catch {}
-      } else {
-        await document.documentElement.requestFullscreen();
-        try {
-          if ('orientation' in screen) {
-            await (screen.orientation as any).lock('landscape').catch(() => {});
-          }
-        } catch {}
-      }
+      } catch { /* ignore */ }
+      return;
     }
+    
+    // 前端模式：浏览器原生全屏 API
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+      try { (screen.orientation as any)?.unlock(); } catch { /* ignore */ }
+      return;
+    }
+    
+    await document.documentElement.requestFullscreen();
+    try {
+      if ('orientation' in screen) {
+        await (screen.orientation as any).lock('landscape').catch(() => {});
+      }
+    } catch { /* ignore */ }
   };
 
   const handleRegenerate = async () => {
@@ -126,7 +127,7 @@ function AppContent() {
     >
       {/* 整体缩放容器：手机端等比例缩小填满全屏，PC 端保持原尺寸 */}
       <div 
-        className="relative"
+        className="relative overflow-visible"
         style={{ 
           width: isMobile ? `${1280}px` : '100%', 
           height: isMobile ? `${720}px` : '100%',
@@ -187,7 +188,7 @@ function AppContent() {
                     }}
                     className={cn(
                       "relative flex-none flex flex-row items-center justify-start gap-4 p-4 transition-all duration-200 group pop-border overflow-hidden",
-                      isActive ? "bg-pop-yellow text-pop-black clip-diagonal shadow-[4px_4px_0_#ff3366]" : "bg-white text-gray-500 hover:bg-gray-100"
+                      isActive ? "bg-pop-yellow text-pop-black clip-diagonal shadow-pop-pink" : "bg-white text-gray-500 hover:bg-gray-100"
                     )}
                   >
                     {isActive && <div className="absolute inset-0 bg-halftone opacity-30"></div>}
@@ -221,7 +222,7 @@ function AppContent() {
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: '100%', opacity: 0 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed bottom-0 left-0 right-0 z-50"
+                className="absolute bottom-0 left-0 right-0 z-50"
               >
                 <ChatBar onClose={() => setIsChatOpen(false)} />
               </motion.div>
@@ -236,7 +237,7 @@ function AppContent() {
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
                 onClick={() => setIsChatOpen(true)}
-                className="fixed bottom-0 left-0 z-50 w-12 h-12 bg-pop-yellow text-pop-black rounded-full pop-border shadow-pop-pink flex items-center justify-center hover:scale-110 transition-transform active:scale-90"
+                className="absolute bottom-2 left-2 z-50 w-12 h-12 bg-pop-yellow text-pop-black rounded-full pop-border shadow-pop-pink flex items-center justify-center hover:scale-110 transition-transform active:scale-90"
                 title="展开输入栏"
               >
                 <MessageCircle className="w-6 h-6" />

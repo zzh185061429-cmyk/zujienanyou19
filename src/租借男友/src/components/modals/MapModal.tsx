@@ -25,7 +25,7 @@ export function MapModal() {
   const filteredLocations = MAP_LOCATIONS.filter(l => l.category === activeTab);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-16 p-2 md:p-4">
+    <div className="absolute inset-0 z-[100] flex items-start justify-center pt-16 p-2 md:p-4">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

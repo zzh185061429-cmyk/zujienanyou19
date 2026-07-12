@@ -64,7 +64,7 @@ export function ReadingModal({ isOpen, onClose }: ReadingModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+        <div className="absolute inset-0 z-[100] flex items-center justify-center">
           {/* 背景遮罩 */}
           <motion.div
             initial={{ opacity: 0 }}
