@@ -125,13 +125,13 @@ function AppContent() {
       className="w-full h-full flex items-center justify-center overflow-hidden"
       style={{ backgroundColor: '#1a1a1a' }}
     >
-      {/* 整体缩放容器：手机端等比例缩小填满全屏，PC 端保持原尺寸 */}
+      {/* 整体缩放容器：手机端等比例缩小填满全屏，PC 端保持原尺寸，全屏时直接 100% 填满 */}
       <div 
         className="relative overflow-visible"
         style={{ 
-          width: isMobile ? `${1280}px` : '100%', 
-          height: isMobile ? `${720}px` : '100%',
-          transform: isMobile ? `scale(${scale})` : 'none',
+          width: isFullscreen ? '100%' : (isMobile ? `${1280}px` : '100%'), 
+          height: isFullscreen ? '100%' : (isMobile ? `${720}px` : '100%'),
+          transform: isFullscreen ? 'none' : (isMobile ? `scale(${scale})` : 'none'),
           transformOrigin: 'center center',
         }}
       >
