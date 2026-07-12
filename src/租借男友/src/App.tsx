@@ -159,7 +159,7 @@ function AppContent() {
 
           {/* Sidebar — slides in from left via translate-x */}
           <nav className={cn(
-            "z-40 flex flex-col justify-start items-stretch bg-pop-black border-r-4 border-white h-full w-64 fixed top-0 left-0 transition-transform duration-300 pt-16",
+            "z-40 flex flex-col justify-start items-stretch bg-pop-black border-r-4 border-white h-full w-64 absolute top-0 left-0 transition-transform duration-300 pt-16",
             isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           )}>
             {/* Close button inside sidebar */}
