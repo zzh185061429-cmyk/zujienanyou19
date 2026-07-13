@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import { PopCard } from "./ui/PopCard";
 import { Clock, MapPin, User, Briefcase, Eye, EyeOff, Menu, X, Maximize2, Minimize2, Brain, Database, BookText, Trash2, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -28,9 +29,9 @@ export function HUD({ isSidebarOpen, onToggleSidebar, isFullscreen, onToggleFull
 
   return (
     <>
-      <div className="absolute top-0 left-0 right-0 z-40 p-2 pointer-events-none">
-        {/* 强制始终使用 PC 端的三列左右布局，手机端缩放后保持相同比例 */}
-        <div className="flex flex-row items-stretch gap-2 w-full">
+      <div className="fixed top-0 left-0 right-0 z-40 p-2 pointer-events-none">
+        {/* 宽屏：三列左右布局；窄屏：上下堆叠 */}
+        <div className="flex flex-col lg:flex-row items-stretch gap-2 w-full">
           
           {/* Left column: 时间 / 地点 / 折叠按钮 */}
           <div className="flex flex-col gap-2 shrink-0 pointer-events-auto">
@@ -115,7 +116,7 @@ export function HUD({ isSidebarOpen, onToggleSidebar, isFullscreen, onToggleFull
             <div className="absolute inset-0 bg-halftone opacity-50"></div>
             <div className="relative z-10 flex justify-between items-end mb-1">
               <span className="text-pop-pink font-black text-lg text-stroke-sm italic">REMAINING DEBT</span>
-              <span className="text-xl font-black text-pop-yellow drop-shadow-[0.125rem_0.125rem_0_#ff3366]">
+              <span className="text-xl font-black text-pop-yellow drop-shadow-[2px_2px_0_#ff3366]">
                 ¥{remainingDebt.toLocaleString()}
               </span>
             </div>
@@ -130,11 +131,11 @@ export function HUD({ isSidebarOpen, onToggleSidebar, isFullscreen, onToggleFull
           </PopCard>
 
           {/* Right column: 当前角色 / 任务 */}
-          <div className="flex flex-col gap-2 shrink-0 pointer-events-auto min-w-[10rem]">
+          <div className="flex flex-col gap-2 shrink-0 pointer-events-auto min-w-[160px]">
             {/* 状态灯 */}
             <PopCard
               className={cn(
-                "py-1 px-3 flex items-center justify-center gap-2 clip-diagonal border-2 border-white shadow-[0.125rem_0.125rem_0_#1a1a1a] transition-colors duration-300",
+                "py-1 px-3 flex items-center justify-center gap-2 clip-diagonal border-2 border-white shadow-[2px_2px_0_#1a1a1a] transition-colors duration-300",
                 isGenerating ? "bg-red-500 text-white" : "bg-green-500 text-white"
               )}
               title={isGenerating ? "AI 生成中..." : "AI 空闲"}
@@ -169,11 +170,11 @@ export function HUD({ isSidebarOpen, onToggleSidebar, isFullscreen, onToggleFull
                   exit={{ y: 50, opacity: 0 }}
                   className="flex flex-col gap-2"
                 >
-                  <PopCard className="py-1 px-3 flex items-center gap-2 bg-pop-pink clip-diagonal border-2 border-pop-black shadow-[0.125rem_0.125rem_0_#1a1a1a]">
+                  <PopCard className="py-1 px-3 flex items-center gap-2 bg-pop-pink clip-diagonal border-2 border-pop-black shadow-[2px_2px_0_#1a1a1a]">
                     <User className="w-4 h-4 shrink-0 text-white" />
                     <span className="font-bold text-sm text-white whitespace-nowrap overflow-hidden text-ellipsis">当前: {currentOrder.charName}</span>
                   </PopCard>
-                  <PopCard className="py-1 px-3 flex items-center gap-2 bg-white clip-diagonal border-2 border-pop-black shadow-[0.125rem_0.125rem_0_#1a1a1a] text-pop-pink">
+                  <PopCard className="py-1 px-3 flex items-center gap-2 bg-white clip-diagonal border-2 border-pop-black shadow-[2px_2px_0_#1a1a1a] text-pop-pink">
                     <Briefcase className="w-4 h-4 shrink-0 text-pop-black" />
                     <span className="font-bold text-sm text-pop-black whitespace-nowrap overflow-hidden text-ellipsis">{currentOrder.task}</span>
                   </PopCard>

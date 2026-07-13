@@ -28,6 +28,8 @@ type ParsedResponse = {
 function extractContent(raw: string): ParsedResponse {
   const maintextMatch = raw.match(/<maintext>([\s\S]*?)<\/maintext>/i);
   if (maintextMatch) {
+    // 剥离标签后的剩余部分仍需要保留用于变量解析
+    const withoutMaintext = raw.replace(/<maintext>[\s\S]*?<\/maintext>/gi, '');
     return {
       maintext: maintextMatch[1].trim(),
       raw: raw, // 变量命令可能散落在任意位置，保留全文
@@ -145,63 +147,99 @@ export async function sendUserMessage(userText: string): Promise<SendResult> {
   }
 }
 
-// ── 重新生成当前楼层 ──
+// ── 重新生成最后一楼层 ──
 
 type RegenResult =
   | { success: true }
   | { success: false; error: string };
 
 /**
- * 重新生成当前 assistant 楼层
- * 找到前一层的 user 消息，删除当前 assistant，用原 user 输入重新生成
+ * 重新生成最后一楼层（assistant）
  *
- * @param assistantFloorId 要重新生成的 assistant 楼层号
+ * 原理：
+ * 1. 获取最后一楼层（必须是 assistant）
+ * 2. 找到上一层的 user 消息作为输入
+ * 3. 使用 should_silence: true 静默生成，不创建新楼层
+ * 4. 用 setChatMessages 直接替换最后一楼层的内容
+ *
+ * 这样避免了删除再创建导致的"楼层消失"问题。
+ *
+ * @param currentFloorId 当前所在的楼层号（在其他楼层执行时传入）
  */
-export async function regenerateCurrentFloor(assistantFloorId: number | null): Promise<RegenResult> {
-  if (assistantFloorId == null) return { success: false, error: '无当前楼层' };
-
+export async function regenerateCurrentFloor(currentFloorId?: number | null): Promise<RegenResult> {
   try {
-    // 步骤 1：找到前一层 user 消息
-    const prevFloorId = assistantFloorId - 1;
-    const prevMsgs = getChatMessages(prevFloorId);
-    if (!prevMsgs || prevMsgs.length === 0 || prevMsgs[0].role !== 'user') {
-      return { success: false, error: '未找到前一层的用户输入' };
+    // ── 步骤 1：获取最后一楼层 ──
+    const lastFloorId = getLastMessageId();
+    const lastFloor = getChatMessages(-1)[0];
+
+    if (!lastFloor) {
+      return { success: false, error: '未找到最后一楼层' };
     }
-    const userText = prevMsgs[0].message || '';
 
-    // 步骤 2：删除当前 assistant 楼层
-    await deleteChatMessages([assistantFloorId], { refresh: 'none' });
-    console.info('[regen] 已删除楼层 #' + assistantFloorId);
+    if (lastFloor.role !== 'assistant') {
+      return { success: false, error: '最后一楼层不是 assistant，无法重新生成' };
+    }
 
-    // 步骤 3：请求 AI 重新生成
+    console.info('[regen] 目标楼层 #' + lastFloorId + '，当前所在楼层 #' + (currentFloorId ?? 'null'));
+
+    // ── 步骤 2：找到上一层的 user 消息 ──
+    // 从最后一楼层往前找，找到最近的一个 user 楼层
+    let userText = '';
+    let userFloorId = -1;
+
+    for (let i = lastFloorId - 1; i >= 0; i--) {
+      const msgs = getChatMessages(i);
+      if (msgs && msgs.length > 0 && msgs[0].role === 'user') {
+        userText = msgs[0].message || '';
+        userFloorId = i;
+        break;
+      }
+    }
+
+    if (!userText) {
+      return { success: false, error: '未找到上一层的用户输入' };
+    }
+
+    console.info('[regen] 找到 user 楼层 #' + userFloorId + '，输入长度:', userText.length);
+
+    // ── 步骤 3：静默生成（不创建新楼层）──
+    console.info('[regen] 开始调用 generate...');
     const rawResponse = await generate({
       user_input: userText,
       should_stream: false,
+      should_silence: true,  // 关键：静默生成，不创建新楼层
     });
+    console.info('[regen] generate 返回:', rawResponse ? '有内容' : '空');
 
-    if (!rawResponse || typeof rawResponse !== 'string') {
-      throw new Error('AI 返回了空响应');
-    }
+    console.info('[regen] AI 重新生成完成，长度:', rawResponse.length);
 
-    // 步骤 4：过滤 + 提取
+    // ── 步骤 4：过滤 + 提取 ──
     const filtered = stripThinking(rawResponse);
     const { maintext, raw: parsedWithVars } = extractContent(filtered);
 
-    // 步骤 5：解析变量
+    // ── 步骤 5：解析变量 ──
+    let mvuData: Mvu.MvuData;
     try {
       await waitGlobalInitialized('Mvu');
-      const oldData = Mvu.getMvuData({ type: 'message', message_id: prevFloorId });
-      await Mvu.parseMessage(parsedWithVars, oldData);
+      const oldData = Mvu.getMvuData({ type: 'message', message_id: lastFloorId });
+      mvuData = await Mvu.parseMessage(parsedWithVars, oldData);
+      console.info('[regen] 变量解析完成');
     } catch {
-      /* MVU 解析失败不影响继续 */
+      console.warn('[regen] 变量解析失败，使用当前 MVU 数据');
+      const oldData = Mvu.getMvuData({ type: 'message', message_id: lastFloorId });
+      mvuData = oldData;
     }
 
-    // 步骤 6：创建新的 assistant 楼层
-    await createChatMessages(
-      [{ role: 'assistant', message: maintext }],
-      { refresh: 'none' },
+    // ── 步骤 6：直接替换最后一楼层的内容（关键：不删除，直接替换）──
+    await setChatMessages(
+      [{ message_id: lastFloorId, message: maintext }],
+      { refresh: 'none' },  // 不触发页面重新渲染，避免退出全屏
     );
-    console.info('[regen] 新 assistant 楼层已创建');
+
+    console.info('[regen] 楼层 #' + lastFloorId + ' 内容已替换');
+
+    // ── 步骤 7：手动通知前端刷新（不触发全屏退出）──
+    eventEmit('story_interaction_done');
 
     return { success: true };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Layers, ChevronDown, CornerDownRight, Navigation } from 'lucide-react';
 import { PopCard } from './ui/PopCard';
 import { getAssistantFloors } from '../utils/floorNav';
@@ -64,7 +64,7 @@ export function FloorSelector() {
       {isOpen && (
         <>
           {/* 点击外部关闭 */}
-          <div className="absolute inset-0 z-40" onClick={() => setIsOpen(false)} />
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
 
           <div className="absolute top-full right-0 mt-1 w-40 max-h-64 overflow-y-auto bg-pop-black border-2 border-white z-50 rounded shadow-[4px_4px_0_#fff]">
             <div className="sticky top-0 bg-pop-cyan text-pop-black text-xs font-black px-3 py-1 border-b-2 border-white">

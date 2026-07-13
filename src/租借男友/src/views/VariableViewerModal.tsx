@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Database, ChevronDown, ChevronRight, Circle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGameContext } from '../state/GameContext';
@@ -157,7 +157,7 @@ export function VariableViewerModal({ isOpen, onClose }: VariableViewerModalProp
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="absolute inset-0 z-100 flex items-center justify-center">
+        <div className="fixed inset-0 z-100 flex items-center justify-center">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

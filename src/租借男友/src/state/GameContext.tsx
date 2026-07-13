@@ -279,7 +279,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           const prev = getChatMessages(lastId - 1)[0];
           if (prev && prev.role === 'assistant') return prev.message_id;
         }
-        return null;
+        return lastId;
       } catch {
         return null;
       }
@@ -360,12 +360,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         // 撞单安全：仅当所有涉及角色都不在「进行中」时才复位今日派单
         const dispatchChars = [dispatch.客户1, dispatch.客户2].filter(c => c && c !== '待定' && c !== '无');
         const anyActive = dispatchChars.some(name => {
-          if (!name) return false;
           const s = charData[name];
           return s && s.服务状态 === '进行中';
         });
         const anyFinished = dispatchChars.some(name => {
-          if (!name) return false;
           const s = charData[name];
           return s && s.服务状态 === '无服务';
         });
@@ -404,6 +402,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         await syncFromMvu();
         pollInterval = setInterval(syncFromMvu, 2000);
         eventStop = eventOn(Mvu.events.VARIABLE_UPDATE_ENDED, () => {
+          syncFromMvu();
+        });
+        // 监听 story_interaction_done 事件（重新生成、删除楼层后刷新）
+        eventOn('story_interaction_done', () => {
+          console.info('[GameContext] 收到 story_interaction_done，刷新数据');
           syncFromMvu();
         });
       } catch {

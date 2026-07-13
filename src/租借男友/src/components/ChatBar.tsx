@@ -12,17 +12,20 @@ import { useToast } from '../components/ToastProvider';
  *   2. triggerSlash('/trigger await=true')  → 触发 AI 生成并等待
  * - 生成期间显示加载态，完成后清空输入
  */
-export function ChatBar({ onClose, onGeneratingChange }: { onClose: () => void; onGeneratingChange?: (generating: boolean) => void }) {
+export function ChatBar({ onClose, onGeneratingChange, isGenerating: isGeneratingProp }: { onClose: () => void; onGeneratingChange?: (generating: boolean) => void; isGenerating?: boolean }) {
   const { pendingMessage, setPendingMessage, startGenerating, finishGenerating } = useGameContext();
   const { showToast } = useToast();
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // 合并外部生成状态（重新生成）和内部发送状态
+  const isBusy = isSending || !!isGeneratingProp;
+
   // 通知父组件生成状态变化
   useEffect(() => {
-    onGeneratingChange?.(isSending);
-  }, [isSending, onGeneratingChange]);
+    onGeneratingChange?.(isBusy);
+  }, [isBusy, onGeneratingChange]);
 
   // pendingMessage 有值 → 自动填入并聚焦
   useEffect(() => {
@@ -36,7 +39,7 @@ export function ChatBar({ onClose, onGeneratingChange }: { onClose: () => void; 
 
   const handleSend = useCallback(async () => {
     const trimmed = text.trim();
-    if (!trimmed || isSending) return;
+    if (!trimmed || isBusy) return;
 
     setIsSending(true);
     setText('');
@@ -63,7 +66,7 @@ export function ChatBar({ onClose, onGeneratingChange }: { onClose: () => void; 
       // 通知 GameContext 生成结束
       finishGenerating();
     }
-  }, [text, isSending, setPendingMessage, showToast, startGenerating, finishGenerating]);
+  }, [text, isBusy, setPendingMessage, showToast, startGenerating, finishGenerating]);
 
   const handleClear = useCallback(() => {
     setText('');
@@ -72,7 +75,7 @@ export function ChatBar({ onClose, onGeneratingChange }: { onClose: () => void; 
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // 生成中禁用键盘发送
-    if (isSending) return;
+    if (isBusy) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -98,9 +101,9 @@ export function ChatBar({ onClose, onGeneratingChange }: { onClose: () => void; 
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isSending ? '剧情生成中，请稍候...' : '输入剧情走向... (Enter 发送, Shift+Enter 换行)'}
+            placeholder={isBusy ? '剧情生成中，请稍候...' : '输入剧情走向... (Enter 发送, Shift+Enter 换行)'}
             rows={2}
-            disabled={isSending}
+            disabled={isBusy}
             className="w-full bg-white text-pop-black font-bold p-3 pr-10 border-4 border-white resize-none
                        placeholder:text-gray-400 focus:outline-none focus:border-pop-yellow
                        transition-colors clip-diagonal text-sm md:text-base
@@ -108,7 +111,7 @@ export function ChatBar({ onClose, onGeneratingChange }: { onClose: () => void; 
           />
           {/* X 清空按钮 */}
           <AnimatePresence>
-            {text && !isSending && (
+            {text && !isBusy && (
               <motion.button
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -125,14 +128,14 @@ export function ChatBar({ onClose, onGeneratingChange }: { onClose: () => void; 
         {/* 发送按钮 / 加载态 */}
         <button
           onClick={handleSend}
-          disabled={!text.trim() || isSending}
+          disabled={!text.trim() || isBusy}
           className="shrink-0 px-4 py-2 sm:px-6 sm:py-3 bg-pop-yellow text-pop-black font-black italic text-base sm:text-lg
                      border-4 border-white shadow-pop-pink
                      hover:scale-105 active:scale-95 transition-all
                      disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100
                      clip-diagonal flex items-center gap-2 min-w-[60px] sm:min-w-[80px] justify-center"
         >
-          {isSending ? (
+          {isBusy ? (
             <Loader className="w-5 h-5 animate-spin" />
           ) : (
             <>

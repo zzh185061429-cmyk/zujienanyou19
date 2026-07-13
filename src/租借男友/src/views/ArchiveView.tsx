@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { PopCard } from "../components/ui/PopCard";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Star, Heart, AlertCircle } from "lucide-react";
+import { X, Star, Heart, AlertCircle, Quote } from "lucide-react";
 
 const CHARACTERS = [
   { 
@@ -318,7 +318,7 @@ export function ArchiveView() {
       {/* Detail Modal */}
       <AnimatePresence>
         {selectedChar && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

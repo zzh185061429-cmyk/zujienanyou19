@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, BookText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { PopCard } from '../components/ui/PopCard';
 import { PopButton } from '../components/ui/PopButton';
 
 type ReadingEntry = {
@@ -64,7 +65,7 @@ export function ReadingModal({ isOpen, onClose }: ReadingModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="absolute inset-0 z-[100] flex items-center justify-center">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
           {/* 背景遮罩 */}
           <motion.div
             initial={{ opacity: 0 }}

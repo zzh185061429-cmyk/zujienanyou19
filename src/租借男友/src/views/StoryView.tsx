@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { PopCard } from "../components/ui/PopCard";
 import { PopButton } from "../components/ui/PopButton";
@@ -187,7 +187,7 @@ export function StoryView() {
           </div>
 
           <div className="flex justify-between items-end mt-4 z-10">
-            <div className="flex gap-4">
+            <div className="flex gap-2 flex-wrap">
               <PopButton variant="ghost" size="sm" className="gap-2 bg-white/10 text-white hover:bg-white/20 pop-border border-white shadow-none" onClick={(e) => { e.stopPropagation(); setShowBacklog(true); }}>
                 <History className="w-4 h-4" /> 历史记录
               </PopButton>

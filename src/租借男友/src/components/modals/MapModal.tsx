@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { motion } from "motion/react";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { X, Map as MapIcon, MapPin, Building, Trees, Coffee } from "lucide-react";
 import { useGameContext } from "../../state/GameContext";
 import { MAP_LOCATIONS } from "../../data/gameData";
@@ -25,7 +25,7 @@ export function MapModal() {
   const filteredLocations = MAP_LOCATIONS.filter(l => l.category === activeTab);
 
   return (
-    <div className="absolute inset-0 z-[100] flex items-start justify-center pt-16 p-2 md:p-4">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-16 p-2 md:p-4">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

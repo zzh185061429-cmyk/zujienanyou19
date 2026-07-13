@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { X, Trash2, AlertTriangle } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useToast } from '../components/ToastProvider';
 
 interface DeleteFloorsModalProps {
@@ -26,14 +26,12 @@ export function DeleteFloorsModal({ isOpen, onClose }: DeleteFloorsModalProps) {
 
     setDeleting(true);
     try {
-      const ids: number[] = [];
-      for (let i = start; i <= end; i++) {
-        ids.push(i);
-      }
-      await deleteChatMessages(ids, { refresh: 'none' });
-      showToast(`已删除楼层 #${start} 到 #${end}`, 'normal');
+      // 使用 /cut 命令彻底删除楼层（不是 deleteChatMessages，那个只是清空内容）
+      await triggerSlash(`/cut ${start}-${end}`);
+      showToast(`已彻底删除楼层 #${start} 到 #${end}`, 'normal');
       onClose();
-      window.location.reload();
+      // 发送事件通知前端刷新，而不是强制页面重载（避免退出全屏）
+      eventEmit('story_interaction_done');
     } catch (e: any) {
       showToast(e?.message || '删除失败', 'alert');
     }
@@ -43,7 +41,7 @@ export function DeleteFloorsModal({ isOpen, onClose }: DeleteFloorsModalProps) {
   if (!isOpen) return null;
 
   return (
-        <div className="absolute inset-0 z-100 flex items-center justify-center">
+    <div className="fixed inset-0 z-100 flex items-center justify-center">
       {/* 背景遮罩 */}
       <motion.div
         initial={{ opacity: 0 }}
