@@ -124,7 +124,8 @@ export function VariableViewerModal({ isOpen, onClose }: VariableViewerModalProp
   useEffect(() => {
     if (!isOpen) return;
     loadVariables();
-  }, [isOpen, viewingFloorId, lastAssistantFloorId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   async function loadVariables() {
     setLoading(true);
@@ -137,13 +138,73 @@ export function VariableViewerModal({ isOpen, onClose }: VariableViewerModalProp
         return;
       }
 
-      await waitGlobalInitialized('Mvu');
-      const variables = Mvu.getMvuData({ type: 'message', message_id: targetFloor });
-      const data = _.get(variables, 'stat_data');
-      setStatData(typeof data === 'object' && data !== null ? data as Record<string, unknown> : null);
-      setFloorId(targetFloor);
-    } catch {
-      console.warn('[VariableViewerModal] 读取变量失败');
+      console.info('[VariableViewerModal] 开始加载变量，目标楼层:', targetFloor);
+      
+      // 等待 MVU 初始化，带超时和直接检查回退
+      try {
+        await Promise.race([
+          waitGlobalInitialized('Mvu'),
+          new Promise<void>((resolve, reject) => {
+            // 每 500ms 检查一次 window.Mvu 是否可用
+            const checkInterval = setInterval(() => {
+              if (typeof window !== 'undefined' && (window as any).Mvu) {
+                clearInterval(checkInterval);
+                clearTimeout(timeoutId);
+                resolve();
+              }
+            }, 500);
+            // 5秒超时
+            const timeoutId = setTimeout(() => {
+              clearInterval(checkInterval);
+              reject(new Error('MVU 初始化超时'));
+            }, 5000);
+          })
+        ]);
+      } catch (e) {
+        // 超时后，直接检查 window.Mvu
+        if (typeof window !== 'undefined' && (window as any).Mvu) {
+          console.info('[VariableViewerModal] waitGlobalInitialized 超时，但 window.Mvu 可用');
+        } else {
+          throw e;
+        }
+      }
+      
+      console.info('[VariableViewerModal] MVU 已就绪');
+      
+      let variables: Mvu.MvuData | null = null;
+      
+      // 先尝试从消息楼层读取
+      try {
+        variables = Mvu.getMvuData({ type: 'message', message_id: targetFloor });
+        console.info('[VariableViewerModal] 从消息楼层读取成功:', targetFloor);
+      } catch (e) {
+        console.info('[VariableViewerModal] 消息楼层无数据，尝试角色卡变量:', e);
+        try {
+          variables = Mvu.getMvuData({ type: 'character' });
+          console.info('[VariableViewerModal] 从角色卡读取成功');
+        } catch (e2) {
+          console.info('[VariableViewerModal] 角色卡无数据，尝试全局变量:', e2);
+          try {
+            variables = Mvu.getMvuData({ type: 'global' });
+            console.info('[VariableViewerModal] 从全局变量读取成功');
+          } catch (e3) {
+            console.warn('[VariableViewerModal] 所有变量源都失败:', e3);
+          }
+        }
+      }
+      
+      if (variables) {
+        const data = _.get(variables, 'stat_data');
+        console.info('[VariableViewerModal] stat_data:', data);
+        setStatData(typeof data === 'object' && data !== null ? data as Record<string, unknown> : null);
+        setFloorId(targetFloor);
+      } else {
+        console.warn('[VariableViewerModal] 无法获取任何变量数据');
+        setStatData(null);
+        setFloorId(targetFloor);
+      }
+    } catch (e) {
+      console.warn('[VariableViewerModal] 读取变量失败:', e);
       setStatData(null);
       setFloorId(null);
     }
@@ -157,7 +218,7 @@ export function VariableViewerModal({ isOpen, onClose }: VariableViewerModalProp
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

@@ -6,6 +6,7 @@ import { History, ChevronRight, ChevronLeft, Play, Pause, Zap, FastForward } fro
 import { useToast } from "../components/ToastProvider";
 import { useGameContext } from "../state/GameContext";
 import { parseScriptContent, ScriptLine } from "./scriptParser";
+import { getLocationBackground, preloadLocationBackgrounds, preloadScriptBackgrounds } from "../data/locationImages";
 
 /** 将 <user> 替换为显示名 */
 function displayName(name: string): string {
@@ -34,7 +35,7 @@ export function StoryView() {
   const skipTypingRef = useRef(false);
 
   const { showToast } = useToast();
-  const { viewingFloorId, lastAssistantFloorId } = useGameContext();
+  const { viewingFloorId, lastAssistantFloorId, currentLocation, gameTime } = useGameContext();
 
   // 读取指定楼层（或最新楼层）消息文本，解析 <content> 标签
   // 当 viewingFloorId 或 lastAssistantFloorId 变化时重新加载
@@ -48,6 +49,13 @@ export function StoryView() {
         const parsed = parseScriptContent(msg.message);
         setScript(parsed);
         setCurrentIndex(0);
+
+        // ── 预加载背景图片 ──
+        const hour = gameTime.getHours();
+        // 1. 预加载 MVU 当前地点的背景（当前时间 + 相反时间）
+        preloadLocationBackgrounds(currentLocation, hour);
+        // 2. 从剧本正文中提取所有地点并预加载
+        preloadScriptBackgrounds(msg.message, hour);
       } else {
         setScript([]);
       }
@@ -59,9 +67,10 @@ export function StoryView() {
 
   const currentLine = script[currentIndex];
 
-  // 打字机效果
+  // 打字机效果 - 使用 requestAnimationFrame 确保流畅
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    let rafId: number;
+    let cancelled = false;
     
     // 重置跳过标记（新句子开始时）
     skipTypingRef.current = false;
@@ -73,26 +82,43 @@ export function StoryView() {
       const fullText = currentLine.text;
       let i = 0;
       const delay = SPEED_DELAY[speedLevel] || 50;
+      let lastTime = performance.now();
 
-      const typeChar = () => {
-        // 检查是否被跳过
-        if (skipTypingRef.current) {
-          setDisplayedText(fullText);
-          setIsTyping(false);
+      const typeChar = (timestamp: number) => {
+        if (cancelled || skipTypingRef.current) {
+          if (!cancelled) {
+            setDisplayedText(fullText);
+            setIsTyping(false);
+          }
           return;
         }
+        
+        const elapsed = timestamp - lastTime;
+        if (elapsed < delay) {
+          rafId = requestAnimationFrame(typeChar);
+          return;
+        }
+        
+        lastTime = timestamp;
+        
         if (i < fullText.length) {
-          setDisplayedText(fullText.substring(0, i + 1));
-          i++;
-          timeout = setTimeout(typeChar, delay);
+          // 批量更新：每3个字符或每帧更新一次，减少setState次数
+          const batchSize = speedLevel >= 4 ? 3 : 1;
+          const endIndex = Math.min(i + batchSize, fullText.length);
+          setDisplayedText(fullText.substring(0, endIndex));
+          i = endIndex;
+          rafId = requestAnimationFrame(typeChar);
         } else {
           setIsTyping(false);
         }
       };
 
-      typeChar();
+      rafId = requestAnimationFrame(typeChar);
     }
-    return () => clearTimeout(timeout);
+    return () => {
+      cancelled = true;
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, [currentIndex, currentLine, script.length, speedLevel]);
 
   // Auto 模式：打字完成后自动播放下一句
@@ -143,6 +169,19 @@ export function StoryView() {
 
       {/* Background Area */}
       <div className="flex-1 relative bg-pop-black cursor-pointer overflow-hidden" onClick={handleNext}>
+        {/* 地点背景图片 - 使用 will-change 优化 */}
+        {(() => {
+          const bgUrl = getLocationBackground(currentLocation, gameTime.getHours());
+          return bgUrl ? (
+            <img
+              src={bgUrl}
+              alt={currentLocation}
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ willChange: 'transform' }}
+              decoding="async"
+            />
+          ) : null;
+        })()}
         <div className="absolute inset-0 bg-halftone opacity-20 mix-blend-overlay"></div>
         <div className="absolute inset-0 bg-linear-to-t from-pop-black via-transparent to-transparent z-10"></div>
       </div>
@@ -180,8 +219,11 @@ export function StoryView() {
         >
           <div className="absolute inset-0 bg-halftone opacity-[0.03] pointer-events-none"></div>
 
-          {/* 文本: 独白=蓝色, 其余=白色, 无斜体、无引号、无星号 */}
-          <div className={`flex-1 overflow-y-auto hide-scrollbar text-xl md:text-[26px] font-bold leading-relaxed tracking-wide z-10 ${currentLine.type === 'thought' ? 'text-blue-400' : 'text-white'}`}>
+          {/* 文本: 独白=蓝色, 其余=白色, 无斜体、无引号、无星号 - 使用 will-change 优化 */}
+          <div 
+            className={`flex-1 overflow-y-auto hide-scrollbar text-xl md:text-[26px] font-bold leading-relaxed tracking-wide z-10 ${currentLine.type === 'thought' ? 'text-blue-400' : 'text-white'}`}
+            style={{ willChange: 'contents' }}
+          >
             {displayedText}
             {isTyping && <span className={`inline-block w-3 h-6 animate-pulse ml-1 align-middle ${currentLine.type === 'thought' ? 'bg-blue-400' : 'bg-white'}`}></span>}
           </div>

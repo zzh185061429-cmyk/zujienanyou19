@@ -31,9 +31,8 @@ function AppContent() {
   const [isReadingOpen, setIsReadingOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const { isEyeCareMode, isViewingHistory, viewingFloorId, lastAssistantFloorId, goToLatest, startGenerating, finishGenerating } = useGameContext();
+  const { isEyeCareMode, isViewingHistory, viewingFloorId, lastAssistantFloorId, goToLatest, startGenerating, finishGenerating, isGenerating } = useGameContext();
   const { showToast } = useToast();
 
   // 检测脚本模式：通过 __TAVERN_SCRIPT_MODE__ 标记区分全屏策略和 CSS
@@ -63,7 +62,6 @@ function AppContent() {
 
   const handleRegenerate = async () => {
     setRegenerating(true);
-    setIsGenerating(true);
     startGenerating();
     console.info('[App] 开始重新生成...');
     try {
@@ -79,7 +77,6 @@ function AppContent() {
       showToast(e?.message || '重新生成失败', 'alert');
     }
     setRegenerating(false);
-    setIsGenerating(false);
     finishGenerating();
   };
   const navItems = [
@@ -182,7 +179,7 @@ function AppContent() {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed bottom-0 left-0 right-0 z-50 pb-safe"
             >
-              <ChatBar onClose={() => setIsChatOpen(false)} onGeneratingChange={setIsGenerating} isGenerating={isGenerating} />
+              <ChatBar onClose={() => setIsChatOpen(false)} />
             </motion.div>
           )}
         </AnimatePresence>

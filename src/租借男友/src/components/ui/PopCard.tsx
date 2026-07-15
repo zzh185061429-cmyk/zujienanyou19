@@ -1,8 +1,7 @@
 import React from "react";
 import { cn } from "../../utils";
-import { motion, HTMLMotionProps } from "motion/react";
 
-interface PopCardProps extends HTMLMotionProps<"div"> {
+interface PopCardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "pink" | "cyan" | "yellow" | "stripes";
   skew?: boolean;
 }
@@ -21,7 +20,7 @@ export const PopCard = React.forwardRef<HTMLDivElement, PopCardProps>(
     };
 
     return (
-      <motion.div
+      <div
         ref={ref}
         className={cn(
           baseStyles,
@@ -32,7 +31,7 @@ export const PopCard = React.forwardRef<HTMLDivElement, PopCardProps>(
         {...props}
       >
         {children}
-      </motion.div>
+      </div>
     );
   }
 );

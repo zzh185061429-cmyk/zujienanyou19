@@ -12,20 +12,14 @@ import { useToast } from '../components/ToastProvider';
  *   2. triggerSlash('/trigger await=true')  → 触发 AI 生成并等待
  * - 生成期间显示加载态，完成后清空输入
  */
-export function ChatBar({ onClose, onGeneratingChange, isGenerating: isGeneratingProp }: { onClose: () => void; onGeneratingChange?: (generating: boolean) => void; isGenerating?: boolean }) {
-  const { pendingMessage, setPendingMessage, startGenerating, finishGenerating } = useGameContext();
+export function ChatBar({ onClose }: { onClose: () => void }) {
+  const { pendingMessage, setPendingMessage, startGenerating, finishGenerating, isGenerating } = useGameContext();
   const { showToast } = useToast();
   const [text, setText] = useState('');
-  const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 合并外部生成状态（重新生成）和内部发送状态
-  const isBusy = isSending || !!isGeneratingProp;
-
-  // 通知父组件生成状态变化
-  useEffect(() => {
-    onGeneratingChange?.(isBusy);
-  }, [isBusy, onGeneratingChange]);
+  // 生成中禁用输入
+  const isBusy = isGenerating;
 
   // pendingMessage 有值 → 自动填入并聚焦
   useEffect(() => {
@@ -41,7 +35,6 @@ export function ChatBar({ onClose, onGeneratingChange, isGenerating: isGeneratin
     const trimmed = text.trim();
     if (!trimmed || isBusy) return;
 
-    setIsSending(true);
     setText('');
     setPendingMessage('');
 
@@ -62,7 +55,6 @@ export function ChatBar({ onClose, onGeneratingChange, isGenerating: isGeneratin
       // 恢复文本以便重试
       setText(trimmed);
     } finally {
-      setIsSending(false);
       // 通知 GameContext 生成结束
       finishGenerating();
     }

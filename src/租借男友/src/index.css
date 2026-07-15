@@ -17,18 +17,19 @@
 
 @layer utilities {
   .bg-halftone {
-    background-image: radial-gradient(var(--color-pop-black) 20%, transparent 20%);
-    background-size: 12px 12px;
+    background-image: radial-gradient(circle, var(--color-pop-black) 1.5px, transparent 2px);
+    background-size: 16px 16px;
+    /* 避免混合模式带来的性能开销 */
   }
   
   .bg-halftone-pink {
-    background-image: radial-gradient(var(--color-pop-pink) 20%, transparent 20%);
-    background-size: 12px 12px;
+    background-image: radial-gradient(circle, var(--color-pop-pink) 1.5px, transparent 2px);
+    background-size: 16px 16px;
   }
 
   .bg-halftone-cyan {
-    background-image: radial-gradient(var(--color-pop-cyan) 20%, transparent 20%);
-    background-size: 12px 12px;
+    background-image: radial-gradient(circle, var(--color-pop-cyan) 1.5px, transparent 2px);
+    background-size: 16px 16px;
   }
 
   .bg-stripes {
@@ -58,11 +59,14 @@
   .text-stroke {
     -webkit-text-stroke: 2px var(--color-pop-black);
     color: white;
+    /* 减少文字渲染开销 */
+    text-rendering: optimizeSpeed;
   }
 
   .text-stroke-sm {
     -webkit-text-stroke: 1px var(--color-pop-black);
     color: white;
+    text-rendering: optimizeSpeed;
   }
   
   .pop-border {
@@ -75,6 +79,15 @@
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+  
+  /* 性能优化：contain 属性减少重绘范围 */
+  .contain-paint {
+    contain: paint;
+  }
+  
+  .contain-layout {
+    contain: layout;
   }
 }
 

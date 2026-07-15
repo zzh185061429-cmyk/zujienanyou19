@@ -33,8 +33,8 @@ const CHARACTERS = [
     avatar: "https://i.postimg.cc/k5trk03S/1000213361.png",
     desc: "姜氏财团董事长，裴今歌的挚友。行事果断，实则是一位充满母性光辉的猫系大姐姐，看似高不可攀实则渴望亲密关系。",
     tags: ["成熟", "母性", "猫系大姐姐"],
-    likes: "大型犬、击剑、看烂片、被坐热的椅子",
-    dislikes: "深夜电话、虚伪的精致礼盒",
+    likes: "大型犬、击剑、看烂片",
+    dislikes: "深夜电话、虚伪的精致礼盒、被坐热的椅子",
     secret: [
       "其实更喜欢跪坐在地上，头靠在亲密的人腿上，尤其是被人挠下巴的时候会不自觉发出呼噜声。",
       "其实'股东'是一个叔伯遗弃的，她想着狗又没什么错，就带回了家里养着。",
@@ -254,7 +254,7 @@ export function ArchiveView() {
       <div ref={carouselRef} className="hidden md:flex flex-1 overflow-hidden z-10 px-2 md:px-4 cursor-grab active:cursor-grabbing pb-24 md:pb-0">
         <motion.div
           drag="x"
-          dragConstraints={{ right: 0, left: -((CHARACTERS.length * 288) - (carouselRef.current?.offsetWidth || 800)) }}
+          dragConstraints={carouselRef}
           dragElastic={0.2}
           className="flex gap-8 h-full items-center w-max"
         >

@@ -336,6 +336,14 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
               ],
             },
             {
+              test: /\.(png|jpe?g|gif|webp|svg)$/i,
+              type: 'asset/resource',
+              generator: {
+                filename: 'assets/[name][ext]',
+              },
+              exclude: /node_modules/,
+            },
+            {
               test: /\.ya?ml$/,
               loader: 'yaml-loader',
               options: { asStream: true },

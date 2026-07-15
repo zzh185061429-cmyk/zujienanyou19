@@ -202,7 +202,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [isEyeCareMode, setIsEyeCareMode] = useState(false);
 
-  const [gameTime, setGameTime] = useState<Date>(new Date(2026, 9, 8, 8, 0, 0));
+  const [gameTime, setGameTime] = useState<Date>(new Date(2026, 9, 8, 19, 0, 0));
   const [currentWeekday, setCurrentWeekday] = useState('');
   const [currentLocation, setCurrentLocation] = useState('沈家别墅');
 
@@ -217,7 +217,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   // ── 虚拟楼层导航 ──
   const [viewingFloorId, setViewingFloor] = useState<number | null>(null);
-  const [lastAssistantFloorId, setLastAssistantFloorId] = useState<number | null>(null);
+  const [lastAssistantFloorId, setLastAssistantFloorId] = useState<number | null>(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingFloorId, setGeneratingFloorId] = useState<number | null>(null);
   const isViewingHistory = viewingFloorId !== null;
@@ -259,22 +259,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── MVU 同步 + 服务状态机 ──
+  // 用 ref 存储生成状态，避免闭包陷阱
+  const isGeneratingRef = React.useRef(isGenerating);
+  const generatingFloorIdRef = React.useRef(generatingFloorId);
+  isGeneratingRef.current = isGenerating;
+  generatingFloorIdRef.current = generatingFloorId;
+
   React.useEffect(() => {
     let cancelled = false;
     let pollInterval: ReturnType<typeof setInterval> | null = null;
     let eventStop: EventOnReturn | null = null;
+    let checkMvuInterval: ReturnType<typeof setInterval> | null = null; // 用于降级模式定期检查 MVU
 
     /** 获取最新 assistant 楼层号 */
     function getLatestAssistantId(): number | null {
       try {
         const lastId = getLastMessageId();
         if (lastId == null) return null;
-        // getLastMessageId 返回的是最新楼层（可能是 user 或 assistant）
-        // 我们需要往回找到 assistant
         const msg = getChatMessages(lastId)[0];
         if (!msg) return null;
         if (msg.role === 'assistant') return msg.message_id;
-        // 如果最新是 user，往前找
         if (lastId > 0) {
           const prev = getChatMessages(lastId - 1)[0];
           if (prev && prev.role === 'assistant') return prev.message_id;
@@ -288,22 +292,19 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const syncFromMvu = async () => {
       if (cancelled) return;
       try {
-        // ── MVU 数据始终从最新 assistant 楼层读取 ──
         const mvuMsgId = getLatestAssistantId();
         if (mvuMsgId == null) return;
 
         const variables = Mvu.getMvuData({ type: 'message', message_id: mvuMsgId });
 
-        // ── 跟踪最新 assistant 楼层号 ──
-        // 生成中不更新 lastAssistantFloorId，避免画面跳转
-        if (!isGenerating) {
+        // 使用 ref 读取最新生成状态，避免闭包陷阱
+        const genFlag = isGeneratingRef.current;
+        const genId = generatingFloorIdRef.current;
+
+        if (!genFlag) {
           setLastAssistantFloorId(mvuMsgId);
         } else {
-          // 生成中但发现新楼层已完成（mvuMsgId 比 generatingFloorId 大）
-          // 说明生成完成了
-          const currentGenId = generatingFloorId;
-          if (currentGenId == null || mvuMsgId > currentGenId) {
-            // 新楼层已生成，更新 generatingFloorId 但不自动跳转画面
+          if (genId == null || mvuMsgId > genId) {
             setGeneratingFloorId(mvuMsgId);
           }
         }
@@ -312,7 +313,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const dispatch = parseMvuDispatch(variables);
         let needsWrite = false;
 
-        // ── 服务状态机：未开始 → 进行中 ──
         const charData = _.get(variables, 'stat_data.角色数据') || {};
         for (const [name, state] of Object.entries(charData as Record<string, any>)) {
           if (!state || typeof state !== 'object') continue;
@@ -327,7 +327,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // ── 服务状态机：进行中 → 递减剩余时间 / → 无服务 ──
         for (const [name, state] of Object.entries(charData as Record<string, any>)) {
           if (!state || typeof state !== 'object') continue;
 
@@ -357,7 +356,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // 撞单安全：仅当所有涉及角色都不在「进行中」时才复位今日派单
         const dispatchChars = [dispatch.客户1, dispatch.客户2].filter(c => c && c !== '待定' && c !== '无');
         const anyActive = dispatchChars.some(name => {
           const s = charData[name];
@@ -378,7 +376,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           await Mvu.replaceMvuData(variables, { type: 'message', message_id: mvuMsgId });
         }
 
-        // ── 更新 React state ──
         if (now) setGameTime(now);
         setCurrentWeekday(parseMvuWeekday(variables));
         setCurrentLocation(parseMvuLocation(variables));
@@ -388,7 +385,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         setRemainingDebt(economy.remainingDebt);
         const charStates = parseMvuCharacterStates(variables);
         setCharacterServiceStates(charStates);
-        // 从 MVU 推导 currentOrder
         setCurrentOrder(deriveCurrentOrder(dispatch));
       } catch {
         // MVU 尚未就绪
@@ -397,20 +393,101 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     async function initSync() {
       try {
-        await waitGlobalInitialized('Mvu');
+        // 等待 MVU 初始化，带超时和直接检查回退
+        let mvuReady = false;
+        try {
+          await Promise.race([
+            waitGlobalInitialized('Mvu'),
+            new Promise<void>((resolve, reject) => {
+              const checkInterval = setInterval(() => {
+                if (typeof window !== 'undefined' && (window as any).Mvu) {
+                  clearInterval(checkInterval);
+                  clearTimeout(timeoutId);
+                  resolve();
+                }
+              }, 500);
+              const timeoutId = setTimeout(() => {
+                clearInterval(checkInterval);
+                reject(new Error('MVU 初始化超时'));
+              }, 15000); // 增加到 15 秒超时
+            })
+          ]);
+          mvuReady = true;
+        } catch (e) {
+          if (typeof window !== 'undefined' && (window as any).Mvu) {
+            console.info('[GameContext] waitGlobalInitialized 超时，但 window.Mvu 可用，继续执行');
+            mvuReady = true;
+          } else {
+            console.warn('[GameContext] MVU 未在预期时间内初始化，将使用降级模式（定期检查）:', e);
+            // 不抛出错误，改为定期检查 MVU 是否就绪
+          }
+        }
+        
         if (cancelled) return;
+
+        // 如果 MVU 尚未就绪，启动定期检查
+        if (!mvuReady) {
+          checkMvuInterval = setInterval(() => {
+            if (cancelled) {
+              if (checkMvuInterval) {
+                clearInterval(checkMvuInterval);
+                checkMvuInterval = null;
+              }
+              return;
+            }
+            if (typeof window !== 'undefined' && (window as any).Mvu) {
+              if (checkMvuInterval) {
+                clearInterval(checkMvuInterval);
+                checkMvuInterval = null;
+              }
+              console.info('[GameContext] MVU 延迟就绪，开始同步');
+              syncFromMvu().catch(err => console.warn('[GameContext] 延迟同步失败:', err));
+              // 启动常规轮询
+              if (!pollInterval) {
+                pollInterval = setInterval(syncFromMvu, 3000);
+              }
+              // 注册事件监听
+              try {
+                eventStop = eventOn(Mvu.events.VARIABLE_UPDATE_ENDED, () => {
+                  syncFromMvu();
+                });
+              } catch (eventErr) {
+                console.warn('[GameContext] 注册 MVU 事件监听失败:', eventErr);
+              }
+            }
+          }, 2000);
+          
+          console.info('[GameContext] 进入 MVU 降级模式，等待 MVU 可用...');
+          return;
+        }
+        
+        console.info('[GameContext] MVU 已就绪，开始同步');
         await syncFromMvu();
-        pollInterval = setInterval(syncFromMvu, 2000);
+        pollInterval = setInterval(syncFromMvu, 3000);
         eventStop = eventOn(Mvu.events.VARIABLE_UPDATE_ENDED, () => {
           syncFromMvu();
         });
-        // 监听 story_interaction_done 事件（重新生成、删除楼层后刷新）
         eventOn('story_interaction_done', () => {
           console.info('[GameContext] 收到 story_interaction_done，刷新数据');
           syncFromMvu();
         });
-      } catch {
-        // MVU 不可用，保持默认值
+        // 监听酒馆原生事件：AI 生成完成时刷新
+        eventOn(tavern_events.MESSAGE_RECEIVED, () => {
+          console.info('[GameContext] 收到 MESSAGE_RECEIVED，刷新数据');
+          syncFromMvu();
+        });
+        eventOn(tavern_events.MESSAGE_UPDATED, (message_id) => {
+          console.info('[GameContext] 收到 MESSAGE_UPDATED，刷新数据，楼层:', message_id);
+          syncFromMvu();
+        });
+        // 监听流式生成完成事件
+        eventOn(iframe_events.GENERATION_ENDED, () => {
+          console.info('[GameContext] 收到 GENERATION_ENDED，刷新数据');
+          // 延迟一点执行，确保 MVU 已经处理完变量更新
+          setTimeout(syncFromMvu, 500);
+        });
+      } catch (e) {
+        console.warn('[GameContext] MVU 初始化失败，保持默认值:', e);
       }
     }
 
@@ -419,6 +496,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
       if (pollInterval) clearInterval(pollInterval);
+      if (checkMvuInterval) clearInterval(checkMvuInterval);
       if (eventStop) eventStop.stop();
     };
   }, []);

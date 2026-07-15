@@ -86,7 +86,7 @@ export function HUD({ isSidebarOpen, onToggleSidebar, isFullscreen, onToggleFull
                 className="py-1 px-2 flex items-center justify-center bg-pop-black text-white cursor-pointer hover:scale-105 hover:bg-pop-pink transition-transform clip-diagonal shrink-0"
                 title="重新生成"
               >
-                <RefreshCw className={`w-4 h-4 ${regenerating ? 'animate-spin' : ''}`} />
+                <RefreshCw className={cn("w-4 h-4", regenerating && "animate-spin")} />
               </PopCard>
               <PopCard
                 onClick={onOpenThinking}
@@ -170,7 +170,7 @@ export function HUD({ isSidebarOpen, onToggleSidebar, isFullscreen, onToggleFull
               className="py-1 px-2 flex items-center justify-center bg-pop-black text-white cursor-pointer hover:scale-105 hover:bg-pop-pink transition-transform clip-diagonal shrink-0"
               title="重新生成"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${regenerating ? 'animate-spin' : ''}`} />
+              <RefreshCw className={cn("w-3.5 h-3.5", regenerating && "animate-spin")} />
             </PopCard>
             <PopCard
               onClick={onOpenVariables}
@@ -214,22 +214,22 @@ export function HUD({ isSidebarOpen, onToggleSidebar, isFullscreen, onToggleFull
 
             {/* 右侧：状态灯 + 当前任务 上下堆叠 */}
             <div className="flex flex-col gap-1 shrink-0 w-[100px] pointer-events-auto">
-              {/* 状态灯 */}
-              <PopCard
-                className={cn(
-                  "py-1 px-2 flex items-center justify-center gap-1 clip-diagonal border-2 border-white shadow-[2px_2px_0_#1a1a1a] transition-colors duration-300",
-                  isGenerating ? "bg-red-500 text-white" : "bg-green-500 text-white"
-                )}
-                title={isGenerating ? "AI 生成中..." : "AI 空闲"}
-              >
-                <div className={cn(
-                  "w-2 h-2 rounded-full animate-pulse",
-                  isGenerating ? "bg-white" : "bg-white"
-                )} />
-                <span className="font-bold text-xs whitespace-nowrap">
-                  {isGenerating ? "生成中" : "就绪"}
-                </span>
-              </PopCard>
+            {/* 状态灯 - 移除 animate-pulse 减少重绘 */}
+            <PopCard
+              className={cn(
+                "py-1 px-2 flex items-center justify-center gap-1 clip-diagonal border-2 border-white shadow-[2px_2px_0_#1a1a1a] transition-colors duration-300",
+                isGenerating ? "bg-red-500 text-white" : "bg-green-500 text-white"
+              )}
+              title={isGenerating ? "AI 生成中..." : "AI 空闲"}
+            >
+              <div className={cn(
+                "w-2 h-2 rounded-full",
+                isGenerating ? "bg-white" : "bg-white"
+              )} />
+              <span className="font-bold text-xs whitespace-nowrap">
+                {isGenerating ? "生成中" : "就绪"}
+              </span>
+            </PopCard>
 
               {/* 当前任务 */}
               <AnimatePresence mode="wait">
@@ -287,7 +287,7 @@ export function HUD({ isSidebarOpen, onToggleSidebar, isFullscreen, onToggleFull
 
           {/* Right column: 当前角色 / 任务 — 大屏显示，竖屏隐藏 */}
           <div className="hidden lg:flex flex-col gap-2 shrink-0 pointer-events-auto min-w-[160px]">
-            {/* 状态灯 */}
+            {/* 状态灯 - 移除 animate-pulse */}
             <PopCard
               className={cn(
                 "py-1 px-3 flex items-center justify-center gap-2 clip-diagonal border-2 border-white shadow-[2px_2px_0_#1a1a1a] transition-colors duration-300",
@@ -296,7 +296,7 @@ export function HUD({ isSidebarOpen, onToggleSidebar, isFullscreen, onToggleFull
               title={isGenerating ? "AI 生成中..." : "AI 空闲"}
             >
               <div className={cn(
-                "w-3 h-3 rounded-full animate-pulse",
+                "w-3 h-3 rounded-full",
                 isGenerating ? "bg-white" : "bg-white"
               )} />
               <span className="font-bold text-sm whitespace-nowrap">
