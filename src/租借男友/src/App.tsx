@@ -11,19 +11,25 @@ import { GameProvider, useGameContext } from './state/GameContext';
 import { StoryView } from './views/StoryView';
 import { DispatchView } from './views/DispatchView';
 import { ArchiveView } from './views/ArchiveView';
+import { GalleryView } from './views/GalleryView';
+import { GalleryDetailView } from './views/GalleryDetailView';
 import { ReadingModal } from './views/ReadingModal';
 import { ThinkingChainModal } from './views/ThinkingChainModal';
 import { VariableViewerModal } from './views/VariableViewerModal';
 import { DeleteFloorsModal } from './views/DeleteFloorsModal';
 import { regenerateCurrentFloor } from './utils/interaction';
-import { MessageSquare, Calendar, Users, X, MessageCircle } from 'lucide-react';
+import { MessageSquare, Calendar, Users, Image, X, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './utils';
 
-type Tab = 'story' | 'dispatch' | 'archive';
+type Tab = 'story' | 'dispatch' | 'archive' | 'gallery';
+
+type GallerySubView = 'list' | 'detail';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<Tab>('story');
+  const [gallerySubView, setGallerySubView] = useState<GallerySubView>('list');
+  const [selectedGalleryChar, setSelectedGalleryChar] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isThinkingOpen, setIsThinkingOpen] = useState(false);
@@ -83,6 +89,7 @@ function AppContent() {
     { id: 'story', label: '剧情推进', icon: MessageSquare },
     { id: 'dispatch', label: '债务调度', icon: Calendar },
     { id: 'archive', label: '角色图鉴', icon: Users },
+    { id: 'gallery', label: '画廊', icon: Image },
   ] as const;
 
   return (
@@ -139,6 +146,10 @@ function AppContent() {
                   key={item.id}
                   onClick={() => {
                     setActiveTab(item.id);
+                    if (item.id === 'gallery') {
+                      setGallerySubView('list');
+                      setSelectedGalleryChar(null);
+                    }
                     setIsSidebarOpen(false);
                   }}
                   className={cn(
@@ -167,6 +178,21 @@ function AppContent() {
           {activeTab === 'story' && <StoryView />}
           {activeTab === 'dispatch' && <DispatchView />}
           {activeTab === 'archive' && <ArchiveView />}
+          {activeTab === 'gallery' && gallerySubView === 'list' && (
+            <GalleryView onSelectChar={(name) => {
+              setSelectedGalleryChar(name);
+              setGallerySubView('detail');
+            }} />
+          )}
+          {activeTab === 'gallery' && gallerySubView === 'detail' && selectedGalleryChar && (
+            <GalleryDetailView
+              characterName={selectedGalleryChar}
+              onBack={() => {
+                setGallerySubView('list');
+                setSelectedGalleryChar(null);
+              }}
+            />
+          )}
         </main>
 
         {/* 底部输入栏 — 可折叠 */}
