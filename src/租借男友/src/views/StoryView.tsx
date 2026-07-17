@@ -44,6 +44,42 @@ const EMOTION_EFFECTS: Record<string, {
   '吃醋': { vignette: 'rgba(255,165,0,0.1)' },
 };
 
+/** 预加载背景图片，返回加载状态 */
+function useBackgroundImage(url: string | undefined): { loaded: boolean; error: boolean } {
+  const [state, setState] = useState({ loaded: false, error: false });
+
+  useEffect(() => {
+    if (!url) {
+      setState({ loaded: false, error: false });
+      return;
+    }
+
+    setState({ loaded: false, error: false });
+
+    const img = new Image();
+    let cancelled = false;
+
+    img.onload = () => {
+      if (!cancelled) setState({ loaded: true, error: false });
+    };
+    img.onerror = () => {
+      if (!cancelled) setState({ loaded: false, error: true });
+    };
+
+    // 如果图片已经缓存，onload 可能同步触发
+    img.src = url;
+
+    // 同步检查是否已完成（缓存命中）
+    if (img.complete && img.naturalWidth > 0) {
+      setState({ loaded: true, error: false });
+    }
+
+    return () => { cancelled = true; };
+  }, [url]);
+
+  return state;
+}
+
 /** 获取切换动画配置 */
 function getTransitionConfig(emotion: string) {
   switch (emotion) {
@@ -98,6 +134,12 @@ export function StoryView() {
 
   const { showToast } = useToast();
   const { viewingFloorId, lastAssistantFloorId, currentLocation, gameTime, nsfwEnabled, nsfwPhase, nsfwChar, setNsfwPhase, setCurrentSceneChar } = useGameContext();
+
+  // 计算当前背景 URL
+  const bgUrl = nsfwEnabled && nsfwChar
+    ? getNsfwCg(nsfwChar, nsfwPhase)
+    : getLocationBackground(currentLocation, gameTime.getHours());
+  const { loaded: bgLoaded, error: bgError } = useBackgroundImage(bgUrl);
 
   // 读取指定楼层（或最新楼层）消息文本，解析 <content> 标签
   const targetFloorId = viewingFloorId ?? lastAssistantFloorId;
@@ -289,36 +331,24 @@ export function StoryView() {
 
       {/* Background Area — z-0 */}
       <div className="flex-1 relative bg-pop-black cursor-pointer overflow-hidden" onClick={handleNext}>
-        {(() => {
-          // NSFW 模式：显示 CG 覆盖背景
-          if (nsfwEnabled && nsfwChar) {
-            const cgUrl = getNsfwCg(nsfwChar, nsfwPhase);
-            if (cgUrl) {
-              return (
-                <img
-                  src={cgUrl}
-                  alt={`NSFW-${nsfwPhase}`}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ willChange: 'transform' }}
-                  decoding="async"
-                />
-              );
-            }
-            // 未解锁 CG 显示黑色背景
-            return <div className="absolute inset-0 bg-black" />;
-          }
-          // 正常模式：显示地点背景
-          const bgUrl = getLocationBackground(currentLocation, gameTime.getHours());
-          return bgUrl ? (
-            <img
-              src={bgUrl}
-              alt={currentLocation}
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ willChange: 'transform' }}
-              decoding="async"
-            />
-          ) : null;
-        })()}
+        {/* 深色占位背景 — 防止图片加载前显示空白 */}
+        <div className="absolute inset-0 bg-[#1a1a2e]" />
+
+        {/* 实际背景图片 — 加载完成后显示 */}
+        {bgUrl && bgLoaded && !bgError && (
+          <img
+            src={bgUrl}
+            alt={nsfwEnabled ? 'CG' : currentLocation}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ willChange: 'transform' }}
+          />
+        )}
+
+        {/* NSFW 未解锁时显示黑色 */}
+        {nsfwEnabled && nsfwChar && !bgUrl && (
+          <div className="absolute inset-0 bg-black" />
+        )}
+
         <div className="absolute inset-0 bg-halftone opacity-20 mix-blend-overlay"></div>
         <div className="absolute inset-0 bg-linear-to-t from-pop-black via-transparent to-transparent z-10"></div>
       </div>

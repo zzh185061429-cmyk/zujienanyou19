@@ -164,7 +164,8 @@ export const CHARACTER_COLORS: Record<string, string> = {
   步玲燕: 'bg-pop-yellow',
 };
 
-/** NSFW 立绘数据，目前为空，后续填入 URL 即可 */
+/** 11个有立绘的角色名列表 */
+export const NAMED_CHARS = Object.keys(CHARACTER_SPRITES);
 export const CHARACTER_SPRITES_NSFW: Record<string, Record<string, string>> = {
   沈千金: {},
   温知晚: {},

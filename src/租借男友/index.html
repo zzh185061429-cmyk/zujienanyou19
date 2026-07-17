@@ -4,9 +4,12 @@
       margin: 0;
       padding: 0;
       width: 100%;
-      height: 100%;
+      /* 使用固定高度，避免移动端键盘弹出时 dvh 重新计算导致闪烁 */
+      height: 100vh;
       overflow: hidden;
       background-color: #1a1a1a;
+      /* 防止 iOS 键盘弹出时的页面弹跳 */
+      -webkit-overflow-scrolling: auto;
     }
     #root {
       width: 100%;
